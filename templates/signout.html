@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head><title>Sign Out Attendance</title></head>
+<body>
+    <h2>Sign Out Attendance - {{ staff.name }}</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <p style="color: {% if category=='danger' %}red{% else %}green{% endif %};">{{ msg }}</p>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <label>{{ form.reason.label }}</label><br>
+        {{ form.reason() }}<br><br>
+        {{ form.submit() }}
+    </form>
+</body>
+</html>

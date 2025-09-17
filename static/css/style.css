@@ -1,0 +1,21 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f8f9fa;
+}
+
+.sidebar {
+    height: 100vh;
+    border-right: 1px solid #ddd;
+}
+
+.nav-link {
+    text-align: center;
+}
+
+.card {
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+.card:hover {
+    transform: scale(1.05);
+}
