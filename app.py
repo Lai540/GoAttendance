@@ -61,10 +61,10 @@ def summarize_early_departures():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        client_ip = request.remote_addr
-        if not is_allowed_ip(client_ip):
-            flash("You must be connected to the school network to log in.", "danger")
-            return redirect(url_for('login'))
+        #client_ip = request.remote_addr
+        #if not is_allowed_ip(client_ip):
+            #flash("You must be connected to the school network to log in.", "danger")
+            #return redirect(url_for('login'))
 
         staff = Staff.query.filter_by(staff_id=form.staff_id.data, password=form.password.data).first()
         if staff:
