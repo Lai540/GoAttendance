@@ -166,10 +166,10 @@ def logout(staff_id):
         flash('Invalid Staff ID', 'danger')
         return redirect(url_for('login'))
 
-    client_ip = request.remote_addr
-    if not is_allowed_ip(client_ip):
-        flash("You must be connected to the school network to log out.", "danger")
-        return redirect(url_for('dashboard'))
+    #client_ip = request.remote_addr
+    #if not is_allowed_ip(client_ip):
+        #flash("You must be connected to the school network to log out.", "danger")
+        #return redirect(url_for('dashboard'))
 
     form = LogoutForm()
     if form.validate_on_submit():
