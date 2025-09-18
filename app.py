@@ -34,10 +34,10 @@ def send_email(to_email, subject, body):
 
 
 # ------------------ IP Restriction ------------------
-ALLOWED_IP_PREFIX = "192.168.1."
+ALLOWED_PUBLIC_IP = "154.159.238.226"  # School's public IP
 
 def is_allowed_ip(ip_address):
-    return ip_address.startswith(ALLOWED_IP_PREFIX)
+    return ip_address == ALLOWED_PUBLIC_IP
 
 
 # ------------------ Helper: Early Departure Summary ------------------
