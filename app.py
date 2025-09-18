@@ -14,21 +14,27 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 db.init_app(app)
 
+import smtplib
+from email.mime.text import MIMEText
+
 # ------------------ Email Helper ------------------
 def send_email(to_email, subject, body):
     try:
         msg = MIMEText(body)
         msg['Subject'] = subject
-        msg['From'] = 'school.email@gmail.com'
+        msg['From'] = 'gofishnethappykids2025@yahoo.com'
         msg['To'] = to_email
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login('school.email@gmail.com', 'your_app_password')
+
+        # Use SSL with port 465
+        server = smtplib.SMTP_SSL('smtp.mail.yahoo.com', 465)
+        server.login('gofishnethappykids2025@yahoo.com', 'zlgpdrjjbowprpnh')  # <-- your app password
         server.send_message(msg)
         server.quit()
-        print(f"Email sent to {to_email}")
+
+        print(f"✅ Email sent to {to_email}")
     except Exception as e:
-        print(f"Email sending failed for {to_email}: {e}")
+        print(f"❌ Email sending failed for {to_email}: {e}")
+
 
 # ------------------ Routes ------------------
 # Add this near the top of your app.py
