@@ -1,21 +1,19 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, session, send_file
-from models import db, Staff, Attendance
+from models import db, Staff, Attendance, Learners
 from forms import LoginForm, LogoutForm, FirstTimeRegistrationForm
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, time
+import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 import pandas as pd
 import smtplib
 from email.mime.text import MIMEText
-from ipaddress import ip_address, ip_network
 import os
+import collections
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 db.init_app(app)
-
-import smtplib
-from email.mime.text import MIMEText
 
 # ------------------ Email Helper ------------------
 def send_email(to_email, subject, body):
@@ -25,9 +23,8 @@ def send_email(to_email, subject, body):
         msg['From'] = 'gofishnethappykids2025@yahoo.com'
         msg['To'] = to_email
 
-        # Use SSL with port 465
         server = smtplib.SMTP_SSL('smtp.mail.yahoo.com', 465)
-        server.login('gofishnethappykids2025@yahoo.com', 'zlgpdrjjbowprpnh')  # <-- your app password
+        server.login('gofishnethappykids2025@yahoo.com', 'zlgpdrjjbowprpnh')  # <-- app password
         server.send_message(msg)
         server.quit()
 
@@ -36,14 +33,29 @@ def send_email(to_email, subject, body):
         print(f"❌ Email sending failed for {to_email}: {e}")
 
 
-# ------------------ Routes ------------------
-# Add this near the top of your app.py
+# ------------------ IP Restriction ------------------
 ALLOWED_IP_PREFIX = "192.168.1."
 
 def is_allowed_ip(ip_address):
     return ip_address.startswith(ALLOWED_IP_PREFIX)
 
 
+# ------------------ Helper: Early Departure Summary ------------------
+def summarize_early_departures():
+    """Return dict with counts of early logouts per staff (Mon–Fri before 4:30pm)."""
+    records = Attendance.query.order_by(Attendance.login_time.desc()).all()
+    cutoff = time(16, 30)  # 4:30pm
+    summary = collections.Counter()
+
+    for rec in records:
+        if rec.logout_time:
+            if rec.logout_time.weekday() < 5:  # Mon-Fri only
+                if rec.logout_time.time() < cutoff:
+                    summary[rec.staff_id] += 1
+    return summary
+
+
+# ------------------ Routes ------------------
 @app.route('/', methods=['GET','POST'])
 def login():
     form = LoginForm()
@@ -59,12 +71,16 @@ def login():
             if form.remember_me.data:
                 session.permanent = True
 
-            # First-time registration
+            # First-time registration check
             if not staff.email or not staff.subjects:
                 return redirect(url_for('first_time_register', staff_id=staff.staff_id))
 
-            # Record login
-            attendance = Attendance(staff_id=staff.staff_id)
+            # Record login (Nairobi time)
+            kenya_tz = pytz.timezone('Africa/Nairobi')
+            attendance = Attendance(
+                staff_id=staff.staff_id,
+                login_time=datetime.now(timezone.utc).astimezone(kenya_tz)
+            )
             db.session.add(attendance)
             db.session.commit()
 
@@ -102,7 +118,8 @@ def first_time_register(staff_id):
 
     return render_template('first_time_register.html', form=form, staff_name=staff.name)
 
-@app.route('/dashboard', methods=['GET','POST'])
+
+@app.route('/dashboard')
 def dashboard():
     if 'staff_id' not in session:
         flash('Please login first.', 'danger')
@@ -110,19 +127,35 @@ def dashboard():
 
     staff = Staff.query.filter_by(staff_id=session['staff_id']).first()
 
-    # ✅ Check if teacher is currently logged in
-    staff.attendance_active = Attendance.query.filter_by(
-        staff_id=staff.staff_id, 
-        logout_time=None
-    ).first() is not None
+    # ✅ Get the latest learners data
+    latest_learners = Learners.query.order_by(Learners.created_at.desc()).first()
 
-    # Change password
-    if request.method == 'POST' and 'new_password' in request.form:
-        staff.password = request.form['new_password']
-        db.session.commit()
-        flash('Password changed successfully!', 'success')
+    if not latest_learners:
+        flash("No learners data available. Please ask admin to add it in Admin Dashboard.", "warning")
+        return render_template("dashboard.html", staff=staff, learners=None)
 
-    return render_template('dashboard.html', staff=staff)
+    # ✅ Prepare chart data
+    categories = ["ECDE", "Primary", "JSS"]
+    girls_counts = [
+        latest_learners.ecde_girls,
+        latest_learners.primary_girls,
+        latest_learners.jss_girls
+    ]
+    boys_counts = [
+        latest_learners.ecde_boys,
+        latest_learners.primary_boys,
+        latest_learners.jss_boys
+    ]
+
+    return render_template(
+        "dashboard.html",
+        staff=staff,
+        learners=latest_learners,
+        categories=categories,
+        girls_counts=girls_counts,
+        boys_counts=boys_counts,
+        total_population=latest_learners.total_population
+    )
 
 
 @app.route('/logout/<staff_id>', methods=['GET','POST'])
@@ -145,7 +178,9 @@ def logout(staff_id):
             db.session.add(attendance)
             db.session.commit()
 
-        attendance.logout_time = datetime.now(timezone.utc)
+        # Record logout (Nairobi time)
+        kenya_tz = pytz.timezone('Africa/Nairobi')
+        attendance.logout_time = datetime.now(timezone.utc).astimezone(kenya_tz)
         attendance.logout_reason = form.reason.data
         db.session.commit()
 
@@ -165,27 +200,62 @@ def logout(staff_id):
 
     return render_template('logout.html', form=form, staff=staff, last_login_time=last_login_time)
 
+
 @app.route('/logout_session')
 def logout_session():
     session.clear()
     flash("Logged out successfully!", "success")
     return redirect(url_for('login'))
 
-# ------------------ Admin & Export ------------------
-@app.route('/admin')
+
+# ------------------ Admin ------------------
+@app.route('/admin', methods=['GET', 'POST'])
 def admin_dashboard():
     if 'staff_id' not in session:
         flash('Please login first.', 'danger')
         return redirect(url_for('login'))
 
     staff = Staff.query.filter_by(staff_id=session['staff_id']).first()
-    if not staff.is_admin:
+    if not staff or not staff.is_admin:
         flash('Access denied.', 'danger')
         return redirect(url_for('dashboard'))
 
+    # Attendance records + early departures
     records = Attendance.query.order_by(Attendance.login_time.desc()).all()
-    return render_template('admin.html', records=records)
+    summary = summarize_early_departures()
 
+    # ✅ Learners form handling
+    from forms import LearnersDataForm
+    form = LearnersDataForm()
+
+    if form.validate_on_submit():
+        learners = Learners(
+            ecde_girls=form.ecde_girls.data,
+            ecde_boys=form.ecde_boys.data,
+            primary_girls=form.primary_girls.data,
+            primary_boys=form.primary_boys.data,
+            jss_girls=form.jss_girls.data,
+            jss_boys=form.jss_boys.data,
+            total_population=form.total_population.data,
+        )
+        db.session.add(learners)
+        db.session.commit()
+        flash("Learners data saved successfully!", "success")
+        return redirect(url_for('admin_dashboard'))
+
+    # ✅ Get latest learners record (for display)
+    latest_learners = Learners.query.order_by(Learners.created_at.desc()).first()
+
+    return render_template(
+        'admin.html',
+        records=records,
+        summary=summary,
+        form=form,
+        learners=latest_learners
+    )
+
+
+# ------------------ Admin Export ------------------
 @app.route('/admin/export')
 def export_reports():
     staff = Staff.query.filter_by(staff_id=session.get('staff_id')).first()
@@ -193,17 +263,17 @@ def export_reports():
         flash('Access denied.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Generate Excel file
     df = pd.read_sql_table('attendance', db.engine)
     file_path = 'attendance_report.xlsx'
     df.to_excel(file_path, index=False)
 
-    # Send file to user
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
     else:
         flash('Failed to generate report.', 'danger')
         return redirect(url_for('admin_dashboard'))
+
+
 
 # ------------------ Scheduler ------------------
 def send_reminders():
@@ -219,12 +289,13 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(send_reminders, 'cron', hour=17, minute=0)
 scheduler.start()
 
+
 # ------------------ Run App ------------------
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
 
-        # Preload staff if not exists
+        # Preload staff
         if Staff.query.count() == 0:
             staff_list = [
                 ("GFHKTS001", "Wilfred Lai"), ("GFHKTS002", "Josephine Ochieng"),
@@ -241,7 +312,6 @@ if __name__ == '__main__':
                 staff = Staff(staff_id=staff_id, name=name, password='123456')
                 db.session.add(staff)
 
-            # Admin account
             admin = Staff(staff_id='Gofishnet001', name='Administrator', password='Gofishnet001*', is_admin=True)
             db.session.add(admin)
 

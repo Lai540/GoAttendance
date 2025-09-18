@@ -32,6 +32,36 @@
     </a>
 </div>
 
+<h2 class="mt-4">Enter Learners Data</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="row">
+        <div class="col-md-4">{{ form.ecde_girls.label }} {{ form.ecde_girls(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.ecde_boys.label }} {{ form.ecde_boys(class="form-control") }}</div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-md-4">{{ form.primary_girls.label }} {{ form.primary_girls(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.primary_boys.label }} {{ form.primary_boys(class="form-control") }}</div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-md-4">{{ form.jss_girls.label }} {{ form.jss_girls(class="form-control") }}</div>
+        <div class="col-md-4">{{ form.jss_boys.label }} {{ form.jss_boys(class="form-control") }}</div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-md-4">{{ form.total_population.label }} {{ form.total_population(class="form-control") }}</div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Save Learners Data</button>
+</form>
+
+{% if learners %}
+<div class="mt-4">
+    <h4>Latest Learners Data</h4>
+    <p>ECDE Girls: {{ learners.ecde_girls }}, ECDE Boys: {{ learners.ecde_boys }}</p>
+    <p>Primary Girls: {{ learners.primary_girls }}, Primary Boys: {{ learners.primary_boys }}</p>
+    <p>JSS Girls: {{ learners.jss_girls }}, JSS Boys: {{ learners.jss_boys }}</p>
+    <p><b>Total Population: {{ learners.total_population }}</b></p>
+</div>
+{% endif %}
 
     <!-- Attendance Records Table -->
     <div class="card shadow-lg">

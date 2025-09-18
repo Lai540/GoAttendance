@@ -22,3 +22,15 @@ class Attendance(db.Model):
     login_time = db.Column(db.DateTime, default=datetime.utcnow)
     logout_time = db.Column(db.DateTime)
     logout_reason = db.Column(db.String(200))
+
+# ✅ New Model for Learners Data
+class Learners(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ecde_girls = db.Column(db.Integer, nullable=False, default=0)
+    ecde_boys = db.Column(db.Integer, nullable=False, default=0)
+    primary_girls = db.Column(db.Integer, nullable=False, default=0)
+    primary_boys = db.Column(db.Integer, nullable=False, default=0)
+    jss_girls = db.Column(db.Integer, nullable=False, default=0)
+    jss_boys = db.Column(db.Integer, nullable=False, default=0)
+    total_population = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
