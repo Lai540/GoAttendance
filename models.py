@@ -7,7 +7,7 @@ class Staff(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     staff_id = db.Column(db.String(50), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120))  # can be empty initially
+    email = db.Column(db.String(120))  # optional initially
     password = db.Column(db.String(100), default='123456')  # initial password
     is_class_teacher = db.Column(db.Boolean, default=False)
     grade_assigned = db.Column(db.String(50))
@@ -23,7 +23,6 @@ class Attendance(db.Model):
     logout_time = db.Column(db.DateTime)
     logout_reason = db.Column(db.String(200))
 
-# ✅ New Model for Learners Data
 class Learners(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ecde_girls = db.Column(db.Integer, nullable=False, default=0)
