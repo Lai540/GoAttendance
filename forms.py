@@ -10,7 +10,7 @@ class LoginForm(FlaskForm):
 
 class LogoutForm(FlaskForm):
     reason = TextAreaField(
-        'Reason for Logging Out Early',
+        'Reason for Logging Out Please',
         validators=[
             DataRequired(message="Please provide a reason."),
             Length(min=5, max=500, message="Reason must be between 5 and 500 characters.")
