@@ -11,25 +11,19 @@ import smtplib
 from email.mime.text import MIMEText
 import os
 import collections
+from forms import LearnerBioDataForm
+from models import Learners, db
+from werkzeug.utils import secure_filename
+from io import BytesIO
 
-# Try importing LearnersDataForm from forms, otherwise define a simple fallback.
-try:
-    from forms import LearnersDataForm
-except Exception:
-    # Fallback simple form definition so admin can still post learners data
-    from flask_wtf import FlaskForm
-    from wtforms import IntegerField, SubmitField
-    from wtforms.validators import NumberRange, Optional
+from flask import Flask
 
-    class LearnersDataForm(FlaskForm):
-        ecde_girls = IntegerField('ECDE Girls', validators=[Optional(), NumberRange(min=0)])
-        ecde_boys = IntegerField('ECDE Boys', validators=[Optional(), NumberRange(min=0)])
-        primary_girls = IntegerField('Primary Girls', validators=[Optional(), NumberRange(min=0)])
-        primary_boys = IntegerField('Primary Boys', validators=[Optional(), NumberRange(min=0)])
-        jss_girls = IntegerField('JSS Girls', validators=[Optional(), NumberRange(min=0)])
-        jss_boys = IntegerField('JSS Boys', validators=[Optional(), NumberRange(min=0)])
-        total_population = IntegerField('Total Population', validators=[Optional(), NumberRange(min=0)])
-        submit = SubmitField('Save Learners Data')
+app = Flask(__name__)
+
+# Define upload folder
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static/uploads/learners')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ensures the folder exists
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 app = Flask(__name__)
@@ -137,30 +131,27 @@ def dashboard():
     open_att = Attendance.query.filter_by(staff_id=staff.staff_id, logout_time=None).first()
     staff.attendance_active = open_att is not None
 
-    # Retrieve latest learners data for charts
-    latest_learners = Learners.query.order_by(Learners.created_at.desc()).first()
+    # Fetch all learners
+    all_learners = Learners.query.all()
 
-    if not latest_learners:
+    if not all_learners:
         # render dashboard without learners charts (admin should add data)
         return render_template("dashboard.html", staff=staff, learners=None)
 
-    categories = ["ECDE", "Primary", "JSS"]
-    girls_counts = [
-        latest_learners.ecde_girls or 0,
-        latest_learners.primary_girls or 0,
-        latest_learners.jss_girls or 0
-    ]
-    boys_counts = [
-        latest_learners.ecde_boys or 0,
-        latest_learners.primary_boys or 0,
-        latest_learners.jss_boys or 0
-    ]
-    total_population = latest_learners.total_population or (sum(girls_counts) + sum(boys_counts))
+    # Define grade categories
+    categories = sorted(list(set(l.grade for l in all_learners)))
+
+    # Compute counts per grade and gender
+    girls_counts = [sum(1 for l in all_learners if l.grade == g and l.gender.lower() == 'female') for g in categories]
+    boys_counts = [sum(1 for l in all_learners if l.grade == g and l.gender.lower() == 'male') for g in categories]
+
+    # Total population
+    total_population = len(all_learners)
 
     return render_template(
         "dashboard.html",
         staff=staff,
-        learners=latest_learners,
+        learners=all_learners,
         categories=categories,
         girls_counts=girls_counts,
         boys_counts=boys_counts,
@@ -295,41 +286,36 @@ def admin_dashboard():
     records = Attendance.query.order_by(Attendance.login_time.desc()).all()
     summary = summarize_early_departures()
 
-    # Learners form
-    form = LearnersDataForm()
+    # Learners biodata form
+    form = LearnerBioDataForm()
     if form.validate_on_submit():
-        # Use 0 defaults if fields are None
-        ecde_girls = form.ecde_girls.data or 0
-        ecde_boys = form.ecde_boys.data or 0
-        primary_girls = form.primary_girls.data or 0
-        primary_boys = form.primary_boys.data or 0
-        jss_girls = form.jss_girls.data or 0
-        jss_boys = form.jss_boys.data or 0
-        total_population = form.total_population.data or (ecde_girls + ecde_boys + primary_girls + primary_boys + jss_girls + jss_boys)
-
-        learners = Learners(
-            ecde_girls=ecde_girls,
-            ecde_boys=ecde_boys,
-            primary_girls=primary_girls,
-            primary_boys=primary_boys,
-            jss_girls=jss_girls,
-            jss_boys=jss_boys,
-            total_population=total_population
+        filename = None
+        new_learner = Learners(
+            admission_no=form.admission_no.data,
+            full_name=form.full_name.data,
+            gender=form.gender.data,
+            dob=form.dob.data,
+            grade=form.grade.data,
+            parent_name=form.parent_name.data,
+            parent_phone=form.parent_phone.data,
+            address=form.address.data,
+            medical_conditions=form.medical_conditions.data,
+            #photo_filename=filename
         )
-        db.session.add(learners)
+        db.session.add(new_learner)
         db.session.commit()
-        flash("Learners data saved successfully!", "success")
+        flash("Learner saved successfully!", "success")
         return redirect(url_for('admin_dashboard'))
 
-    # Latest learners for display
-    latest_learners = Learners.query.order_by(Learners.created_at.desc()).first()
+    # Display all learners
+    all_learners = Learners.query.order_by(Learners.created_at.desc()).all()
 
     return render_template(
         'admin.html',
         records=records,
         summary=summary,
         form=form,
-        learners=latest_learners
+        learners=all_learners
     )
 
 
@@ -370,6 +356,100 @@ def send_reminders():
 scheduler = BackgroundScheduler()
 scheduler.add_job(send_reminders, 'cron', hour=17, minute=0)
 scheduler.start()
+
+# ------------------ List All Learners ------------------
+from flask import Flask, render_template, redirect, url_for, flash, request, send_file
+from io import BytesIO
+import pandas as pd
+from models import db, Learners  # adjust import as needed
+from forms import LearnerBioDataForm  # your WTForms form
+
+# ------------------ Learners List & Add ------------------
+@app.route('/learners', methods=['GET', 'POST'])
+def learners():
+    form = LearnerBioDataForm()
+
+    # Predefined grades
+    grades = ['PlayGroup', 'PP1', 'PP2'] + [f'Grade {i}' for i in range(1, 10)]
+
+    if form.validate_on_submit():
+        new_learner = Learners(
+            admission_no=form.admission_no.data,
+            full_name=form.full_name.data,
+            gender=form.gender.data,
+            dob=form.dob.data,
+            grade=form.grade.data,
+            parent_name=form.parent_name.data,
+            parent_phone=form.parent_phone.data,
+            address=form.address.data,
+            medical_conditions=form.medical_conditions.data
+        )
+        db.session.add(new_learner)
+        db.session.commit()
+        flash("Learner added successfully!", "success")
+        return redirect(url_for('learners'))
+
+    # Fetch all learners
+    all_learners = Learners.query.order_by(Learners.grade, Learners.full_name).all()
+
+    # Categorize learners by grade
+    learners_by_grade = {grade: [] for grade in grades}
+    for l in all_learners:
+        if l.grade in learners_by_grade:
+            learners_by_grade[l.grade].append(l)
+
+    return render_template('learners.html', form=form, learners_by_grade=learners_by_grade, grades=grades)
+
+# ------------------ Edit Learner ------------------
+@app.route('/learners/edit/<int:id>', methods=['GET', 'POST'])
+def edit_learner(id):
+    learner = Learners.query.get_or_404(id)
+    form = LearnerBioDataForm(obj=learner)
+
+    if form.validate_on_submit():
+        form.populate_obj(learner)
+        db.session.commit()
+        flash('Learner updated successfully!', 'success')
+        return redirect(url_for('admin_dashboard'))
+
+    return render_template('edit_learner.html', form=form, learner=learner)
+
+# ------------------ Delete Learner ------------------
+@app.route('/learners/delete/<int:id>', methods=['POST'])
+def delete_learner(id):
+    learner = Learners.query.get_or_404(id)
+    db.session.delete(learner)
+    db.session.commit()
+    flash('Learner deleted successfully.', 'success')
+    return redirect(url_for('learners'))
+
+# ------------------ Export Learners to Excel ------------------
+@app.route('/learners/export')
+def export_learners():
+    grade_filter = request.args.get('grade', None)
+    if grade_filter:
+        learners = Learners.query.filter_by(grade=grade_filter).all()
+    else:
+        learners = Learners.query.all()
+
+    df = pd.DataFrame([{
+        'Admission No': l.admission_no,
+        'Full Name': l.full_name,
+        'Gender': l.gender,
+        'Grade': l.grade,
+        'Parent Name': l.parent_name,
+        'Parent Phone': l.parent_phone,
+        'Address': l.address,
+        'Medical Conditions': l.medical_conditions
+    } for l in learners])
+
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+
+    filename = f"learners_report_{grade_filter if grade_filter else 'all'}.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename)
+
 
 
 # ------------------ Run App ------------------

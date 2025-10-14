@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block body %}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Card Wrapper -->
+            <div class="card shadow-lg border-0">
+                <div class="card-header text-white" style="background: linear-gradient(90deg, #6a11cb, #2575fc);">
+                    <h4 class="mb-0">📝 Add / Edit Learner</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, msg in messages %}
+                                <div class="alert alert-{{ 'danger' if category=='danger' else 'success' }} alert-dismissible fade show" role="alert">
+                                    {{ msg }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- Learner Form -->
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ form.admission_no.label(class="form-label") }}
+                                {{ form.admission_no(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.full_name.label(class="form-label") }}
+                                {{ form.full_name(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.gender.label(class="form-label") }}
+                                {{ form.gender(class="form-select") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.dob.label(class="form-label") }}
+                                {{ form.dob(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.grade.label(class="form-label") }}
+                                {{ form.grade(class="form-select") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.parent_name.label(class="form-label") }}
+                                {{ form.parent_name(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.parent_phone.label(class="form-label") }}
+                                {{ form.parent_phone(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.address.label(class="form-label") }}
+                                {{ form.address(class="form-control") }}
+                            </div>
+                            <div class="col-12">
+                                {{ form.medical_conditions.label(class="form-label") }}
+                                {{ form.medical_conditions(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="mt-4 text-center">
+                            {{ form.submit(class="btn btn-success btn-lg w-50") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

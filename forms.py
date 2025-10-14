@@ -1,6 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, SelectField, BooleanField, TextAreaField, IntegerField
-from wtforms.validators import DataRequired, Email, Length, NumberRange
+from wtforms import StringField, PasswordField, SubmitField, SelectField, BooleanField, TextAreaField, IntegerField, DateField, FileField
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
+from flask_wtf import FlaskForm
+
 
 class LoginForm(FlaskForm):
     staff_id = StringField('Staff ID', validators=[DataRequired()])
@@ -32,12 +34,37 @@ class FirstTimeRegistrationForm(FlaskForm):
     syllabus_coverage = TextAreaField('Syllabus coverage (optional)')
     submit = SubmitField('Complete Registration')
 
-class LearnersDataForm(FlaskForm):
-    ecde_girls = IntegerField('ECDE Girls', validators=[DataRequired(), NumberRange(min=0)])
-    ecde_boys = IntegerField('ECDE Boys', validators=[DataRequired(), NumberRange(min=0)])
-    primary_girls = IntegerField('Primary Girls', validators=[DataRequired(), NumberRange(min=0)])
-    primary_boys = IntegerField('Primary Boys', validators=[DataRequired(), NumberRange(min=0)])
-    jss_girls = IntegerField('JSS Girls', validators=[DataRequired(), NumberRange(min=0)])
-    jss_boys = IntegerField('JSS Boys', validators=[DataRequired(), NumberRange(min=0)])
-    total_population = IntegerField('Total Population of Learners', validators=[DataRequired(), NumberRange(min=0)])
-    submit = SubmitField('Save Learners Data')
+from flask_wtf import FlaskForm
+from wtforms import StringField, DateField, SelectField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, DateField, SubmitField
+from wtforms.validators import DataRequired
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, DateField, SubmitField
+from wtforms.validators import DataRequired, Length, Optional
+
+class LearnerBioDataForm(FlaskForm):
+    admission_no = StringField('Admission No', validators=[DataRequired(), Length(max=20)])
+    full_name = StringField('Full Name', validators=[DataRequired(), Length(max=100)])
+    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], validators=[DataRequired()])
+    dob = DateField('Date of Birth', format='%Y-%m-%d', validators=[Optional()])
+    
+    # Updated grade field as dropdown
+    grade = SelectField(
+        'Grade',
+        choices=[
+            ('PlayGroup', 'PlayGroup'),
+            ('PP1', 'PP1'),
+            ('PP2', 'PP2')
+        ] + [(f'Grade {i}', f'Grade {i}') for i in range(1, 10)],
+        validators=[DataRequired()]
+    )
+
+    parent_name = StringField("Parent/Guardian Name", validators=[Optional(), Length(max=100)])
+    parent_phone = StringField("Parent Phone", validators=[Optional(), Length(max=20)])
+    address = StringField("Address", validators=[Optional(), Length(max=200)])
+    medical_conditions = StringField("Medical Conditions", validators=[Optional(), Length(max=200)])
+    submit = SubmitField("Add Learner")

@@ -1,5 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from flask_wtf import FlaskForm
+from wtforms import StringField, DateField, SelectField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired
+from werkzeug.utils import secure_filename
 
 db = SQLAlchemy()
 
@@ -25,11 +29,16 @@ class Attendance(db.Model):
 
 class Learners(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    ecde_girls = db.Column(db.Integer, nullable=False, default=0)
-    ecde_boys = db.Column(db.Integer, nullable=False, default=0)
-    primary_girls = db.Column(db.Integer, nullable=False, default=0)
-    primary_boys = db.Column(db.Integer, nullable=False, default=0)
-    jss_girls = db.Column(db.Integer, nullable=False, default=0)
-    jss_boys = db.Column(db.Integer, nullable=False, default=0)
-    total_population = db.Column(db.Integer, nullable=False, default=0)
+    admission_no = db.Column(db.String(50), unique=True, nullable=False)
+    full_name = db.Column(db.String(100), nullable=False)
+    gender = db.Column(db.String(10))
+    dob = db.Column(db.Date)
+    grade = db.Column(db.String(20))
+    parent_name = db.Column(db.String(100))
+    parent_phone = db.Column(db.String(20))
+    address = db.Column(db.String(200))
+    medical_conditions = db.Column(db.Text)
+    #photo = db.Column(db.String(100))  # keep the old column name
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+

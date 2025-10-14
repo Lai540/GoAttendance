@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block body %}
+<h2>{{ staff.grade_assigned }} Learners</h2>
+<a href="{{ url_for('add_learner') }}" class="btn btn-success">+ Add Learner</a>
+<a href="{{ url_for('export_learners') }}" class="btn btn-info">⬇ Download Report</a>
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Admission No</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Parent</th>
+            <th>Grade</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for l in learners %}
+        <tr>
+            <td>{{ l.admission_no }}</td>
+            <td>{{ l.full_name }}</td>
+            <td>{{ l.gender }}</td>
+            <td>{{ l.parent_name }}</td>
+            <td>{{ l.grade }}</td>
+            <td>
+                <a href="{{ url_for('edit_learner', id=l.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                <form action="{{ url_for('delete_learner', id=l.id) }}" method="POST" style="display:inline;">
+                    <button class="btn btn-sm btn-danger" onclick="return confirm('Delete this learner?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

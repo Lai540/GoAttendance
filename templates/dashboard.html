@@ -14,6 +14,7 @@
         .card-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .chart-container { position: relative; height: 350px; width: 100%; }
         .attendance-status { position: fixed; bottom: 10px; right: 20px; z-index: 1050; min-width: 250px; }
+        table { font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -28,7 +29,6 @@
                     <a href="{{ url_for('dashboard') }}" class="nav-link text-white active">🏠 Dashboard</a>
                 </li>
                 <li class="nav-item mb-2">
-                    <!-- Sign In Attendance -->
                     <form method="POST" action="{{ url_for('sign_in_attendance') }}">
                         <button type="submit" class="btn btn-success w-100 text-start">✅ Sign In Attendance</button>
                     </form>
@@ -90,6 +90,18 @@
                     </div>
                 </div>
 
+                                                <!-- Learners Card -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Learners</h5>
+                            <p class="card-text">Check Learners' Bio Data</p>
+                            <a href="{{ url_for('learners') }}" class="btn btn-success w-100">Go to Learners</a>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- Change Password Card -->
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm border-0 h-100">
@@ -109,7 +121,6 @@
                     </div>
                 </div>
 
-                <!-- Admin Panel Card -->
                 {% if staff.is_admin %}
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm border-0 h-100">
@@ -120,6 +131,7 @@
                         </div>
                     </div>
                 </div>
+
                 {% endif %}
             </div>
 
@@ -130,18 +142,19 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm border-0 text-center h-100">
                         <div class="card-body">
-                            <h5 class="card-title">Total Learners Population</h5>
+                            <h5 class="card-title">Total Learners</h5>
                             <p class="card-text fs-3 fw-bold text-success">{{ total_population }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Gender Charts -->
             <div class="row g-3 mb-4">
                 <div class="col-md-8">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body">
-                            <h5 class="card-title text-center">Learners Enrollment by Gender</h5>
+                            <h5 class="card-title text-center">Enrollment by Gender</h5>
                             <div class="chart-container">
                                 <canvas id="learnersChart"></canvas>
                             </div>
@@ -159,6 +172,55 @@
                     </div>
                 </div>
             </div>
+            <!-- Learners Table (Limited to Latest 10) -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <h5 class="card-title text-center">Latest 10 Learners</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped text-center align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Admission No</th>
+                                            <th>Full Name</th>
+                                            <th>Gender</th>
+                                            <th>DOB</th>
+                                            <th>Grade</th>
+                                            <th>Parent Name</th>
+                                            <th>Parent Phone</th>
+                                            <th>Address</th>
+                                            <th>Medical Conditions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for l in learners %}
+                                        <tr>
+                                            <td>{{ l.admission_no }}</td>
+                                            <td>{{ l.full_name }}</td>
+                                            <td>{{ l.gender }}</td>
+                                            <td>{{ l.dob.strftime('%Y-%m-%d') if l.dob else '' }}</td>
+                                            <td>{{ l.grade }}</td>
+                                            <td>{{ l.parent_name }}</td>
+                                            <td>{{ l.parent_phone }}</td>
+                                            <td>{{ l.address }}</td>
+                                            <td>{{ l.medical_conditions }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- View All Learners Button -->
+                            <div class="text-start mt-2">
+                                <a href="{{ url_for('learners') }}" class="btn btn-sm btn-primary">View All Learners Per Grade</a>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
             {% else %}
             <div class="alert alert-warning">No learners data available. Please contact admin.</div>
             {% endif %}

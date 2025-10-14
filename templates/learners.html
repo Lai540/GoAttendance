@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block body %}
+
+<div class="container mt-4">
+
+    <h2 class="mb-4 text-center text-primary">📚 Learners Bio Data</h2>
+
+    <!-- Export & Dashboard Buttons -->
+    <div class="mb-4 d-flex justify-content-between flex-wrap">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary mb-2">🏠 Back to Dashboard</a>
+
+        <form method="GET" action="{{ url_for('export_learners') }}" class="d-flex gap-2 mb-2">
+            <select name="grade" id="exportGrade" class="form-select w-auto">
+                <option value="">All Grades</option>
+                {% for g in grades %}
+                    <option value="{{ g }}">{{ g }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-success">📊 Export to Excel</button>
+        </form>
+    </div>
+
+    <!-- Grade Filter -->
+    <div class="mb-4">
+        <label for="gradeFilter" class="form-label fw-bold">Select Grade to Display:</label>
+        <select id="gradeFilter" class="form-select w-auto">
+            <option value="All">All Grades</option>
+            {% for g in grades %}
+                <option value="{{ g }}">{{ g }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Define unique colors for grades -->
+    {% set grade_colors = {
+        'Grade 1': {'header': '#FF6F61', 'row': '#FFE5E0'},
+        'Grade 2': {'header': '#6B5B95', 'row': '#E6E0F8'},
+        'Grade 3': {'header': '#88B04B', 'row': '#E7F3D6'},
+        'Grade 4': {'header': '#FFA500', 'row': '#FFF3E0'},
+        'Grade 5': {'header': '#009688', 'row': '#E0F7F6'},
+        'Grade 6': {'header': '#F06292', 'row': '#FFE0EB'},
+        'Grade 7': {'header': '#3F51B5', 'row': '#E0E3FF'},
+        'Grade 8': {'header': '#795548', 'row': '#F0EDEB'},
+        'Grade 9': {'header': '#607D8B', 'row': '#E0E6EB'}
+    } %}
+
+    <!-- Display Learners By Grade -->
+    {% for grade in grades %}
+        {% if learners_by_grade[grade] %}
+            {% set colors = grade_colors.get(grade, {'header':'#6c757d','row':'#f8f9fa'}) %}
+            <div class="grade-table card shadow-lg mb-4" data-grade="{{ grade }}" style="border-top: 5px solid {{ colors.header }};">
+                <div class="card-header text-white" style="background: linear-gradient(90deg, {{ colors.header }}, #fff);">
+                    <h5 class="mb-0 fw-bold">{{ grade }}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle text-center mb-0" style="border-color: {{ colors.header }}">
+                            <thead style="background-color: {{ colors.header }}; color: #fff;">
+                                <tr>
+                                    <th>Admission No</th>
+                                    <th>Full Name</th>
+                                    <th>Gender</th>
+                                    <th>DOB</th>
+                                    <th>Parent</th>
+                                    <th>Phone</th>
+                                    <th>Address</th>
+                                    <th>Medical</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for l in learners_by_grade[grade] %}
+                                <tr style="background-color: {{ loop.index0 % 2 == 0 and colors.row or '#ffffff' }}">
+                                    <td>{{ l.admission_no }}</td>
+                                    <td>{{ l.full_name }}</td>
+                                    <td>{{ l.gender }}</td>
+                                    <td>{{ l.dob.strftime('%Y-%m-%d') if l.dob else '' }}</td>
+                                    <td>{{ l.parent_name }}</td>
+                                    <td>{{ l.parent_phone }}</td>
+                                    <td>{{ l.address }}</td>
+                                    <td>{{ l.medical_conditions }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+
+</div>
+
+<script>
+// Filter tables by selected grade
+document.getElementById('gradeFilter').addEventListener('change', function() {
+    const selectedGrade = this.value;
+    const tables = document.querySelectorAll('.grade-table');
+
+    tables.forEach(tableDiv => {
+        if (selectedGrade === 'All' || tableDiv.dataset.grade === selectedGrade) {
+            tableDiv.style.display = 'block';
+        } else {
+            tableDiv.style.display = 'none';
+        }
+    });
+
+    // Update export dropdown to match selected grade
+    const exportDropdown = document.getElementById('exportGrade');
+    exportDropdown.value = selectedGrade === 'All' ? '' : selectedGrade;
+});
+</script>
+
+{% endblock %}
